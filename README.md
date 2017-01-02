@@ -1,6 +1,6 @@
 # enetlognke
 
-enetlognke is an NKE (network kernel extension) that demonstrates the interface filter KPI (kernel programming interface). It has two different features:
+enetlognke is an OSX NKE (network kernel extension) that demonstrates the interface filter KPI (kernel programming interface). It has two different features:
 
 * it will log packets being transferred via the interface
 
