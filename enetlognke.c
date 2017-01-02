@@ -200,190 +200,120 @@ enum {
 
 #pragma mark Utility Functions
 
- 
 
-/*! Converts a protocol number to a user-visible name string.
 
- *  \param protocol The protocol number.
-
- *  \param str A buffer into which to store the string.
-
- *  \param strSize The size of that buffer.
-
+/*!
+ * adds extra to given string. string must be large enough to hold the extra
+ * @param string the string to be extended
+ * @param size sizeof(string). This is the size of the buffer, not the string size!
+ * @param format the string to be added
+ * @param ... additional args for format, if format is a  formatted string.
  */
 
- 
+static void append(char* string, unsigned long size, char* format, ...) {
+    char buf[size];
 
-static void 
-
-ProtocolToString(protocol_family_t protocol, char str[], size_t strSize)
-
-{
-
-    assert(str != NULL);
-
-    assert(strSize != 0);
-
-    switch (protocol) {
-
-        case AF_UNSPEC:     strlcpy(str, "UNSP", strSize); break;
-
-        case AF_INET:       strlcpy(str, "IPv4", strSize); break;
-
-        case AF_INET6:      strlcpy(str, "IPv6", strSize); break;
-
-        default:            snprintf(str, strSize, "%3u?", (unsigned int) protocol); break;
-
-    }
-
+    va_list args;
+    va_start (args, format);
+    
+    vsnprintf(buf, size, format, args);
+    strncat(string, buf, size-strlen(string)-1);
+    va_end (args);
 }
 
  
 
-/*! Prints the first kLogPacketByteCount bytes of an Ethernet-like packet within an mbuf.
-
- *  \param frame A pointer to frame data to be printed before the mbuf data, or NULL.
-
- *  \param frameSize The length of any frame data, or 0.
-
- *  \param m The mbuf containing the packet to print.
-
+/*! Converts a protocol number to a user-visible name string.
+ *  \param protocol The protocol number.
+ *  \return a name for given protocol.
  */
-
- 
-
-static void 
-
-PrintPacketHeader(const void * frame, size_t frameSize, mbuf_t m)
-
+static char* ProtocolToString(protocol_family_t protocol)
 {
+    switch (protocol) {
+        case AF_UNSPEC:     return "UNSP";
+        case AF_INET:       return "IPv4";
+        case AF_INET6:      return "IPv6";
 
+    }
+    return "UNKN";
+}
+
+
+
+/*! Prints the first kLogPacketByteCount bytes of an Ethernet-like packet within an mbuf.
+ *  \param frame A pointer to frame data to be printed before the mbuf data, or NULL.
+ *  \param frameSize The length of any frame data, or 0.
+ *  \param m The mbuf containing the packet to print.
+ * @param text the result text buffer. Must be large enough to hold the result. The result will be appended with append.
+ * @param textlen the length of the text buffer.
+ */
+static void AddPacketHeader(const void * frame, size_t frameSize, mbuf_t m, char* text , unsigned long textlen)
+{
     const uint8_t * data;
-
     size_t          dataLength;
-
     size_t          dataIndex;
-
     mbuf_t          mNext;
-
     size_t          bytesLeftToPrint;
-
     size_t          column;
 
-    
-
     assert(kLogPacketByteCount != 0);               // Shouldn't be called unless logging is enabled.
-
-    // frame may be NULL
-
     assert( (frameSize != 0) || (frame == NULL) );
-
     assert(m != NULL);
-
-    
+    assert(text != NULL);
 
     // If we've got no leading frame, start with the mbuf.
-
     // Otherwise we start with the frame.
 
-    
-
     if (frame == NULL) {
-
         data       = mbuf_data(m);
-
         dataLength = mbuf_len(m);
-
         mNext      = mbuf_next(m);
-
     } else {
-
         data       = frame;
-
         dataLength = frameSize;
-
         mNext      = m;
 
     }
 
-    
-
     // Looping printing data.
-
-    
-
     bytesLeftToPrint = kLogPacketByteCount;
-
     column = 0;
-
+    
     do {
-
         size_t          bytesToPrintNow;
-
- 
-
         // Print the current chunk of data (but no more than bytesLeftToPrint).
-
-        
-
         bytesToPrintNow = dataLength;
 
         if (bytesToPrintNow > bytesLeftToPrint) {
-
             bytesToPrintNow = bytesLeftToPrint;
-
         }
 
         for (dataIndex = 0; dataIndex < bytesToPrintNow; dataIndex++, column++) {
-
-            printf("%02x", data[dataIndex]);
-
-            if (column == 5 ) printf("|");         // print '|' after the destination address
-
-            if (column == 11) printf("|");         // print '|' after the source address
-
-            if (column == 13) printf("|");         // print '|' after the protocol/length field
-
+            append(text, textlen, "%02x", data[dataIndex]);
+            switch (column) {
+                case 5://destination address
+                case 11: //source address
+                case 13: //protocol/length field
+                    append(text,textlen, "|");
+                    break;
+            }
         }
-
- 
 
         // Stop if we don't need to print any more.
-
-        
-
         bytesLeftToPrint -= bytesToPrintNow;
-
         if (bytesLeftToPrint == 0) {
-
             break;
-
         }
-
- 
 
         // Stop if there is no next mbuf to work on.
-
-        
-
         if (mNext == NULL) {
-
             break;
-
         }
 
-        
-
         // Otherwise move on to the next mbuf.
-
-        
-
         data       = mbuf_data(mNext);
-
         dataLength = mbuf_len(mNext);
-
         mNext      = mbuf_next(mNext);
-
     } while (TRUE);
 
 }
@@ -391,65 +321,48 @@ PrintPacketHeader(const void * frame, size_t frameSize, mbuf_t m)
  
 
 /*! Prints a summary of a packet running through the filter.
-
  *  \param caller Identifiers the caller (and hence whether it's an input or output packet).
-
  *  \param protocol The protocol number for this packet.
-
  *  \param m The mbuf containing the packet to print.
-
+ * @param summary the summary text. Buffer that is large enough to hold the summary.
+ * @param summarylength the length of summary text buffer.
  */
-
- 
-
-static void 
-
-PrintPacketSummary(const char * caller, protocol_family_t protocol, const void * frame, size_t frameSize, mbuf_t m, boolean_t isDuplicate)
+static void AddPacketSummary(const char * caller, protocol_family_t protocol, const void * frame, size_t frameSize, mbuf_t m, boolean_t isDuplicate, char* summary, unsigned long summarylength)
 
 {
-
     mbuf_t      cursor;
-
-    char        protocolName[16];
-
     size_t      packetByteCount;
 
-    
-
     assert(kLogPacketByteCount != 0);               // Shouldn't be called unless logging is enabled.
-
     assert(caller != NULL);
-
     assert(m != NULL);
+    assert(summary != NULL);
+    assert(sizeof(summary) > 5);
 
- 
-
-    ProtocolToString(protocol, protocolName, sizeof(protocolName));
-
- 
-
+    // fixme refactor, pull this out.
     cursor = m;
 
     packetByteCount = frameSize;
-
     do {
-
         packetByteCount += mbuf_len(m);
-
         cursor = mbuf_next(cursor);
-
     } while (cursor != NULL);
 
- 
-
-    printf("enetlognke %s %s ", caller, protocolName);
-
-    PrintPacketHeader(frame, frameSize, m);
-
-    printf(" %4lu%s\n", (unsigned long) packetByteCount, isDuplicate ? " +" : "");
-
+    append(summary, summarylength, "enetlognke %s %s ", caller, ProtocolToString(protocol));
+    AddPacketHeader(frame, frameSize, m, summary, summarylength);
+    append(summary, summarylength," %4lu%s\n", (unsigned long) packetByteCount, isDuplicate ? " +" : "");
 }
 
+
+static void PrintPacketSummary(const char * caller, protocol_family_t protocol, const void * frame, size_t frameSize, mbuf_t m, boolean_t isDuplicate)
+{
+    static unsigned long summarylength=512;
+    char summary[summarylength];
+    summary[0]=0;
+
+    AddPacketSummary(caller, protocol, frame, frameSize, m, isDuplicate,summary,summarylength);
+    printf("%s",summary);
+}
  
 
 #pragma mark * Memory Subsystem
@@ -1698,7 +1611,8 @@ enetlognke_input_func(
 
 }
 
-                                  
+
+
 
 /*! Allows the interface filter to filter outgoing packets.
 
@@ -1759,7 +1673,7 @@ enetlognke_output_func(
     
 
     if (kLogPacketByteCount != 0) {
-
+        
         PrintPacketSummary("out", protocol, NULL, 0, *data, seenItBefore);
 
     }
@@ -1859,12 +1773,9 @@ enetlognke_event_func(
 {
 
     #pragma unused(cookie)
-
     #pragma unused(interface)
-
     #pragma unused(protocol)
 
-    char                protocolName[16];
 
  
 
@@ -1874,13 +1785,9 @@ enetlognke_event_func(
 
     assert(event != NULL);
 
- 
-
-    ProtocolToString(protocol, protocolName, sizeof(protocolName));
-
     printf("enetlognke event protocol:%s vendor:%u class:%u subclass:%u code:%u\n",
 
-        protocolName,  
+        ProtocolToString(protocol),
 
         (unsigned int) event->vendor_code,  
 
@@ -1923,24 +1830,14 @@ enetlognke_ioctl_func(
 {
 
     #pragma unused(cookie)
-
     #pragma unused(interface)
-
     #pragma unused(argument)
-
-    char                protocolName[16];
-
- 
 
     assert(interface != NULL);
 
     // nothing to say about protocol, command, or argument
 
-    
-
-    ProtocolToString(protocol, protocolName, sizeof(protocolName));
-
-    printf("enetlognke ioctl protocol:%s command:0x%lx\n", protocolName, command);
+    printf("enetlognke ioctl protocol:%s command:0x%lx\n", ProtocolToString(protocol), command);
 
     return EOPNOTSUPP;
 
