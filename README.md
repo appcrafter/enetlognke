@@ -26,11 +26,11 @@ This is a list of space-separated items, as follows
  5. The packet byte count
  6. repetition mark: if this packet was seen before, '+' is added at the end of the line
 
-The packet summary info contains a '|' separated list of the following values
- 1. destination address
- 2. source address
- 3. protocol/length field
- 
+The packet summary info contains a '|' separated list of the following values (see also https://en.wikipedia.org/wiki/Ethernet_frame)
+ 1. destination MAC address
+ 2. source MAC address
+ 3. protocol/length field. Typically 0x0800 indicating IPv4. 
+ 4. First data bytes
  
  
  This is a copy of Apple's enetlognke (https://developer.apple.com/library/content/samplecode/enetlognke/Introduction/Intro.html).  I made copy because (1) Apple does not provide all required files, eg xcode files are missing (2) the code does not work 100% on Sierra.
