@@ -16,7 +16,7 @@ The message part of the output to the system log is like this:
 
 
 
-```enetlognke out IPv4 00145c8c909c|3c15c2e7f2fe|0800|45000034   66```
+```enetlognke out IPv4 00146c8c909c|3d27c6e7f2fa|0800|45000034   66```
 
 This is a list of space-separated items, as follows
  1. The text "enetlognke" is just here to ensure this text comes from our kext.
