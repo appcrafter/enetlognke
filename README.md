@@ -16,7 +16,7 @@ The message part of the output to the system log is like this:
 
 
 
-```enetlognke out IPv4 00146c8c909c|3d27c6e7f2fa|0800|45000034   66```
+```enetlognke out IPv4 00146c8c909c|3d27c6e7f2fa|0800|45000034   66 pid=firefox```
 
 This is a list of space-separated items, as follows
  1. The text "enetlognke" is just here to ensure this text comes from our kext.
@@ -25,6 +25,7 @@ This is a list of space-separated items, as follows
  4. Packet summary info as detailed below
  5. The packet byte count
  6. repetition mark: if this packet was seen before, '+' is added at the end of the line
+ 7. the process pid. name of current process. 
 
 The packet summary info contains a '|' separated list of the following values (see also https://en.wikipedia.org/wiki/Ethernet_frame)
  1. destination MAC address
