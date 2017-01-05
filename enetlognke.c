@@ -351,6 +351,10 @@ static void AddPacketSummary(const char * caller, protocol_family_t protocol, co
     append(summary, summarylength, "enetlognke %s %s ", caller, ProtocolToString(protocol));
     AddPacketHeader(frame, frameSize, m, summary, summarylength);
     append(summary, summarylength," %4lu%s\n", (unsigned long) packetByteCount, isDuplicate ? " +" : "");
+    
+    char name[PATH_MAX];
+    proc_selfname(name, PATH_MAX);
+    append(summary, summarylength, "pid=%s", name);
 }
 
 
@@ -2072,6 +2076,7 @@ extern kern_return_t com_example_apple_samplecode_kext_enetlognke_start(kmod_inf
  
 
     printf("enetlognke start '%s'\n", gNameOfInterfaceToFilter);
+    printf("info: %s %lx",ki->name, (long)ki->reference_list);
 
  
 

@@ -86,11 +86,11 @@ Once you've selected the correct interface, you must install the NKE.  To start,
 
  
 
-$ sudo cp -R enetlognke.kext /Library/Extensions/
+$ sudo cp -R enetlognke.kext /System/Library/Extensions/
 
 Password: ********
 
-$ sudo kextutil /Library/Extensions/enetlognke.kext
+$ sudo kextutil /System/Library/Extensions/enetlognke.kext
 
  
 
